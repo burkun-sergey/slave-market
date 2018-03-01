@@ -1,0 +1,70 @@
+//---------------------db
+
+DROP TABLE IF EXISTS slaves;
+CREATE TABLE slaves (
+  id INTEGER NOT NULL AUTO_INCREMENT,
+  name varchar(150),
+  weight INTEGER NULL,
+  priceperhour DECIMAL(12,2) NULL,
+  cost DECIMAL(12,2) NULL,
+  gender ENUM('male','female','other') NULL,
+  PRIMARY KEY(id),
+  KEY idx_slaves_weight (weight),
+  KEY idx_slaves_cost (cost)
+) ENGINE=INNODB default charset=utf8;
+
+DROP TABLE IF EXISTS tree;
+CREATE TABLE tree (
+  id INTEGER NOT NULL AUTO_INCREMENT,
+  name varchar(250),
+  PRIMARY KEY(id)
+) ENGINE=INNODB default charset=utf8;
+
+DROP TABLE IF EXISTS slaves_tree_link;
+CREATE TABLE slaves_tree_link (
+  id INTEGER NOT NULL AUTO_INCREMENT,
+  slave_id INTEGER NOT NULL,
+  tree_id INTEGER NOT NULL,
+  PRIMARY KEY(id),
+  INDEX slaves_tree_link_FKIndex1(tree_id),
+  INDEX slaves_tree_link_FKIndex2(slave_id)
+) ENGINE=INNODB default charset=utf8;
+
+DROP TABLE IF EXISTS tree_link;
+CREATE TABLE tree_link (
+  parent_id INTEGER NOT NULL,
+  tree_id INTEGER NOT NULL,
+  level INTEGER NOT NULL,
+  INDEX tree_link_FKIndex1(tree_id),
+  INDEX tree_link_FKIndex2(parent_id)
+) ENGINE=INNODB default charset=utf8;
+
+// для каждой ветки (tree_id) в tree_link есть запись parent_id=tree_id (ветка явл. родителем самой себе), чтобы можно было просто запрашивать все tree_id всего поддерева выбранной tree_id (ветки), включая её саму
+
+//-----------------selects
+
+// •Получить минимальную, максимальную и среднюю стоимость всех рабов весом более 60 кг.
+select min(cost), max(cost), avg(cost) from slaves where weight>60;
+
+// •Выбрать категории, в которых больше 10 рабов.
+select tree_id, count(slave_id) from slaves_tree_link group by tree_id having count(slave_id)>10;
+
+// •Выбрать категорию с наибольшей суммарной стоимостью рабов.
+select stl.tree_id, sum(s.cost)
+from slaves_tree_link stl inner join slaves s on s.id=stl.slave_id
+group by stl.tree_id
+order by sum(cost) desc limit 1;
+
+// •Выбрать категории, в которых мужчин больше чем женщин.
+select stl.tree_id
+from slaves_tree_link stl inner join slaves s on s.id=stl.slave_id
+group by stl.tree_id
+having count(if(s.gender="male", 1, null))>count(if(s.gender="female", 1, null)); 
+
+// •Количество рабов в категории "Для кухни" (включая все вложенные категории).
+select sum(cnt)
+from 
+(select count(distinct stl.slave_id) as cnt
+from slaves_tree_link stl
+where stl.tree_id in (select tree_id from tree_link where parent_id=2)
+group by stl.tree_id) as tmp;
