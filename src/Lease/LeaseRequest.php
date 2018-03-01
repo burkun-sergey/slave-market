@@ -16,8 +16,24 @@ class LeaseRequest
     public $slaveId;
 
     /** @var string время начала работ Y-m-d H:i:s */
-    public $timeFrom;
+    protected $timeFrom;
 
     /** @var string время окончания работ Y-m-d H:i:s */
-    public $timeTo;
+    protected $timeTo;
+	
+	public function __construct(string $dtFrom, string $dtTo) {
+		if (strcasecmp($dtFrom, $dtTo)>0) {
+			die("Неверный порядок дат!");
+		} 
+		$this->timeFrom = $dtFrom;
+		$this->timeTo = $dtTo;
+	}
+	
+	public function getTimeFrom(): string {
+		return $this->timeFrom;
+	}
+	
+	public function getTimeTo(): string {
+		return $this->timeTo;
+	}
 }
